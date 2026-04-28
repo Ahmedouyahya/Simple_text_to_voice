@@ -54,11 +54,45 @@ ENGINES = [
     {"id": "voxcpm", "display": "VoxCPM-0.5B (slower, higher quality)"},
 ]
 
+# Add any Piper voice here after downloading it with download_voices.sh.
+# ID must match the filename in voices/ (without .onnx).
+# Download any voice from: https://huggingface.co/rhasspy/piper-voices
 VOICES_META = [
+    # --- Arabic ---
     {"id": "ar_JO-kareem-medium", "lang": "ar", "engine": "piper",
      "display": "Kareem — Arabic (JO), medium"},
+
+    # --- English ---
     {"id": "en_US-amy-medium",    "lang": "en", "engine": "piper",
      "display": "Amy — English (US), medium"},
+    # {"id": "en_US-joe-medium",    "lang": "en", "engine": "piper",
+    #  "display": "Joe — English (US), medium"},
+    # {"id": "en_US-lessac-medium", "lang": "en", "engine": "piper",
+    #  "display": "Lessac — English (US), medium"},
+    # {"id": "en_GB-alan-medium",   "lang": "en", "engine": "piper",
+    #  "display": "Alan — English (GB), medium"},
+
+    # --- French ---
+    # {"id": "fr_FR-upmc-medium",   "lang": "fr", "engine": "piper",
+    #  "display": "UPMC — French (FR), medium"},
+
+    # --- German ---
+    # {"id": "de_DE-thorsten-medium", "lang": "de", "engine": "piper",
+    #  "display": "Thorsten — German (DE), medium"},
+
+    # --- Spanish ---
+    # {"id": "es_ES-mls_10246-low", "lang": "es", "engine": "piper",
+    #  "display": "MLS — Spanish (ES), low"},
+
+    # --- Russian ---
+    # {"id": "ru_RU-dmitri-medium", "lang": "ru", "engine": "piper",
+    #  "display": "Dmitri — Russian (RU), medium"},
+
+    # --- Chinese ---
+    # {"id": "zh_CN-huayan-medium", "lang": "zh", "engine": "piper",
+    #  "display": "Huayan — Chinese (CN), medium"},
+
+    # --- VoxCPM (optional, slow on CPU) ---
     {"id": "voxcpm-default",      "lang": "multi", "engine": "voxcpm",
      "display": "VoxCPM default voice"},
 ]

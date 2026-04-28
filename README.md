@@ -4,8 +4,8 @@ A local, offline text-to-speech web app built on [Piper TTS](https://github.com/
 
 ## Features
 
-- **Piper TTS** — fast, CPU-friendly neural TTS (Arabic & English voices pre-configured; any Piper voice works)
-- **VoxCPM** — optional higher-quality engine (very slow on CPU — see warning below)
+- **Piper TTS** — fast, CPU-friendly neural TTS (supports 30+ languages)
+- **VoxCPM** — optional higher-quality engine (very slow on CPU — see note below)
 - **DeepFilterNet** — optional noise-removal pass before encoding
 - **ffmpeg pipeline** — loudness normalization (EBU R128 −16 LUFS) → 96 kbps MP3
 - **File upload** — drag-and-drop `.txt`, `.tex` (LaTeX auto-cleaned), or `.pdf`
@@ -31,14 +31,20 @@ python3 -m venv .venv
 
 ### 3. Download voice models
 
-Place the `.onnx` and `.onnx.json` files for each voice in the `voices/` directory.
+Run the included script to download the default voices automatically:
 
-| Voice | Language | Link |
-|---|---|---|
-| `ar_JO-kareem-medium` | Arabic (Jordan) | [Hugging Face](https://huggingface.co/rhasspy/piper-voices/tree/main/ar/ar_JO/kareem/medium) |
-| `en_US-amy-medium` | English (US) | [Hugging Face](https://huggingface.co/rhasspy/piper-voices/tree/main/en/en_US/amy/medium) |
+```bash
+./download_voices.sh
+```
 
-Any other [Piper voice](https://huggingface.co/rhasspy/piper-voices) works — add its entry to `VOICES_META` in `webapp/server.py`.
+This downloads `ar_JO-kareem-medium` (Arabic) and `en_US-amy-medium` (English) from Hugging Face into `voices/`.
+
+To download a different or additional voice:
+
+```bash
+./download_voices.sh en_US-joe-medium
+./download_voices.sh de_DE-thorsten-medium fr_FR-upmc-medium
+```
 
 ### 4. Start the server
 
@@ -46,7 +52,55 @@ Any other [Piper voice](https://huggingface.co/rhasspy/piper-voices) works — a
 ./serve.sh
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000) — default login is `137` / `137` (change from the user menu).
+Open [http://127.0.0.1:8000](http://127.0.0.1.8000) — default login is `137` / `137` (change from the user menu).
+
+---
+
+## Available voices
+
+Piper supports 30+ languages. Below are recommended voices per language. Download any of them with `./download_voices.sh <voice-id>`, then uncomment the matching entry in `VOICES_META` inside `webapp/server.py`.
+
+All voices are hosted at: `https://huggingface.co/rhasspy/piper-voices`
+
+| Voice ID | Language | Gender | Quality |
+|---|---|---|---|
+| `ar_JO-kareem-medium` | Arabic | Male | medium |
+| `en_US-amy-medium` | English (US) | Female | medium |
+| `en_US-joe-medium` | English (US) | Male | medium |
+| `en_US-lessac-medium` | English (US) | Female | medium |
+| `en_US-libritts_r-medium` | English (US) | Neutral | medium |
+| `en_GB-alan-medium` | English (UK) | Male | medium |
+| `en_GB-jenny_dioco-medium` | English (UK) | Female | medium |
+| `fr_FR-upmc-medium` | French | Male | medium |
+| `fr_FR-mls-medium` | French | Neutral | medium |
+| `de_DE-thorsten-medium` | German | Male | medium |
+| `de_DE-eva_k-x_low` | German | Female | x_low |
+| `es_ES-mls_10246-low` | Spanish (ES) | Neutral | low |
+| `es_MX-claude-high` | Spanish (MX) | Male | high |
+| `pt_BR-faber-medium` | Portuguese (BR) | Male | medium |
+| `ru_RU-dmitri-medium` | Russian | Male | medium |
+| `ru_RU-irina-medium` | Russian | Female | medium |
+| `zh_CN-huayan-medium` | Chinese | Female | medium |
+| `tr_TR-dfki-medium` | Turkish | Neutral | medium |
+| `ja_JP-kenichi-medium` | Japanese | Male | medium |
+| `it_IT-riccardo-x_low` | Italian | Male | x_low |
+
+> Full list: [huggingface.co/rhasspy/piper-voices](https://huggingface.co/rhasspy/piper-voices)
+
+### Adding a voice to the UI
+
+1. Download the model:
+   ```bash
+   ./download_voices.sh en_US-joe-medium
+   ```
+2. Open `webapp/server.py` and uncomment (or add) an entry in `VOICES_META`:
+   ```python
+   {"id": "en_US-joe-medium", "lang": "en", "engine": "piper",
+    "display": "Joe — English (US), medium"},
+   ```
+3. Restart the server — the new voice appears in the dropdown immediately.
+
+---
 
 ## CLI tool
 
@@ -65,9 +119,13 @@ echo "Hello world" | ./read.sh en -
 
 Output files: `*_raw.wav`, `*_ff.wav` (ffmpeg chain), `*_dfn.wav` (DeepFilterNet), `*_both.wav` (DFN + ffmpeg).
 
+---
+
 ## VoxCPM note
 
 VoxCPM produces higher-quality output but is **~50× slower than realtime** on a CPU-only machine. Use Piper for anything beyond a short test sample.
+
+---
 
 ## Project layout
 
@@ -82,8 +140,9 @@ VoxCPM produces higher-quality output but is **~50× slower than realtime** on a
 ├── tools/
 │   ├── clean_tex.py       # generic LaTeX → plain text converter
 │   └── voxcpm_worker.py   # VoxCPM subprocess worker
-├── voices/                # put .onnx + .onnx.json files here (not tracked by git)
+├── voices/                # .onnx + .onnx.json files go here (not tracked by git)
 ├── output/                # synthesized MP3s land here (not tracked by git)
+├── download_voices.sh     # download voice models from Hugging Face
 ├── read.sh                # CLI: synthesize one file
 ├── serve.sh               # start the web server
 └── requirements.txt
