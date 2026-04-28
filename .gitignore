@@ -1,0 +1,30 @@
+# Python virtual environment
+.venv/
+
+# Large voice model binaries — download separately (see README)
+voices/*.onnx
+
+# Runtime secrets — never commit these
+.auth.json
+.session_secret
+
+# Generated audio output
+output/
+
+# Claude Code state
+.claude/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Personal novel content
+chapter5.txt
+synth_novel.sh
+
+# OS / editor noise
+.DS_Store
+*.swp
+*.swo

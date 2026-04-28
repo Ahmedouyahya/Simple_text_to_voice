@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Piper Novel Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'system-ui', 'sans-serif'],
+          ar:   ['Cairo', 'Tajawal', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        },
+      },
+    },
+  }
+</script>
+<style>
+  html, body { background: #0a0a0a; color: #e5e5e5; }
+  body {
+    background-image:
+      radial-gradient(ellipse 70% 40% at 15% -5%, rgba(245,158,11,.09) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 10%, rgba(124,58,237,.06) 0%, transparent 60%);
+    background-attachment: fixed;
+  }
+  .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #26262a; border-radius: 3px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #3a3a40; }
+  .dropzone.drag { border-color: #f59e0b !important; background: rgba(245,158,11,.06); }
+  @keyframes pulse-ring { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(2.4); opacity: 0; } }
+  .pulse::after {
+    content: ''; position: absolute; inset: -2px; border-radius: 9999px;
+    border: 2px solid #f59e0b; animation: pulse-ring 1.4s ease-out infinite;
+  }
+  audio { accent-color: #f59e0b; }
+  audio::-webkit-media-controls-panel { background-color: #0a0a0a; }
+  [dir="rtl"], [dir="auto"]:lang(ar) { font-family: 'Cairo', 'Tajawal', sans-serif; }
+  textarea[dir="auto"] { font-family: 'Cairo', 'Inter', sans-serif; }
+
+  /* Range slider styling */
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 4px; border-radius: 2px;
+    background: #26262a; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #f59e0b; cursor: pointer;
+    box-shadow: 0 0 0 4px rgba(245,158,11,.15);
+    transition: box-shadow .15s;
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #f59e0b; cursor: pointer; border: none;
+    box-shadow: 0 0 0 4px rgba(245,158,11,.15);
+  }
+  input[type="range"]:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px rgba(245,158,11,.25); }
+
+  /* Modal */
+  .modal-backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px); }
+</style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+
+<header class="border-b border-neutral-800/60 sticky top-0 z-20 bg-black/40 backdrop-blur-md">
+  <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/25 shrink-0">
+        <svg class="w-5 h-5 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/><path d="M8 22h8"/></svg>
+      </div>
+      <div class="min-w-0">
+        <h1 class="text-[15px] font-semibold tracking-tight leading-none truncate">Piper Novel Studio</h1>
+        <p class="text-[11px] text-neutral-500 font-mono mt-1">local · offline · open source</p>
+      </div>
+    </div>
+    <nav class="flex items-center gap-4 text-[13px] text-neutral-400 shrink-0">
+      <a href="#library" class="hover:text-white transition hidden sm:inline">Library</a>
+      <span class="text-neutral-700 hidden sm:inline">·</span>
+      <div class="relative">
+        <button id="user-btn" class="flex items-center gap-2 hover:text-white transition">
+          <span class="w-6 h-6 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-[11px] font-mono text-amber-400" id="user-avatar">·</span>
+          <span id="user-name" class="font-mono text-[12px]">…</span>
+          <svg class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor"><path d="M5.25 7.5l4.75 5 4.75-5z"/></svg>
+        </button>
+        <div id="user-menu" class="hidden absolute right-0 mt-2 w-48 bg-neutral-950 border border-neutral-800 rounded-xl shadow-xl overflow-hidden z-30">
+          <button id="change-btn" class="w-full text-left px-3 py-2 text-[13px] hover:bg-neutral-900 transition">Change credentials</button>
+          <button id="logout-btn" class="w-full text-left px-3 py-2 text-[13px] text-red-400 hover:bg-neutral-900 transition">Log out</button>
+        </div>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+
+  <!-- Row 1: Input + Progress -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Input card -->
+    <section class="lg:col-span-2 bg-neutral-950/60 border border-neutral-800/80 rounded-2xl p-5 sm:p-6 space-y-4 backdrop-blur-sm">
+      <div class="flex items-center justify-between">
+        <h2 class="text-[13px] font-semibold uppercase tracking-wider text-neutral-300 flex items-center gap-2">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+          Input
+        </h2>
+        <span id="char-count" class="text-[11px] text-neutral-500 font-mono">0 chars</span>
+      </div>
+
+      <div id="dropzone" class="dropzone border-2 border-dashed border-neutral-800 rounded-xl p-5 text-center cursor-pointer hover:border-neutral-700 transition">
+        <input type="file" id="file-input" class="hidden" accept=".tex,.pdf,.txt">
+        <p class="text-[13px] text-neutral-400">
+          Drop a <code class="text-amber-400 font-mono">.tex</code>,
+          <code class="text-amber-400 font-mono">.pdf</code> or
+          <code class="text-amber-400 font-mono">.txt</code> ·
+          or <button id="browse-btn" class="text-amber-400 hover:text-amber-300 underline underline-offset-2">browse</button>
+        </p>
+        <p id="drop-filename" class="text-[11px] text-neutral-600 font-mono mt-1.5"></p>
+      </div>
+
+      <!-- Engine + voice row -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="space-y-1.5">
+          <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">Engine</label>
+          <select id="engine-select"
+                  class="w-full bg-black/60 border border-neutral-800 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-amber-500/60 transition"></select>
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">Voice</label>
+          <select id="voice-select"
+                  class="w-full bg-black/60 border border-neutral-800 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-amber-500/60 transition"></select>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <div class="space-y-1.5">
+        <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">Title (MP3 tag + filename)</label>
+        <input type="text" id="title-input" placeholder="Untitled"
+               class="w-full bg-black/60 border border-neutral-800 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-amber-500/60 transition">
+      </div>
+
+      <!-- Piper-only sliders -->
+      <div id="piper-settings" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">Speech speed</label>
+            <span id="speed-val" class="text-[11px] font-mono text-amber-400">1.00×</span>
+          </div>
+          <input type="range" id="speed" min="0.7" max="1.4" step="0.05" value="1.0">
+          <div class="flex justify-between text-[10px] text-neutral-600 font-mono">
+            <span>faster</span><span>slower</span>
+          </div>
+        </div>
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">Sentence silence</label>
+            <span id="silence-val" class="text-[11px] font-mono text-amber-400">0.25s</span>
+          </div>
+          <input type="range" id="silence" min="0" max="1" step="0.05" value="0.25">
+          <div class="flex justify-between text-[10px] text-neutral-600 font-mono">
+            <span>tight</span><span>spacious</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- VoxCPM-only sliders -->
+      <div id="voxcpm-settings" class="hidden space-y-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">CFG (expressiveness)</label>
+              <span id="cfg-val" class="text-[11px] font-mono text-amber-400">2.0</span>
+            </div>
+            <input type="range" id="cfg" min="1.0" max="3.5" step="0.1" value="2.0">
+            <div class="flex justify-between text-[10px] text-neutral-600 font-mono">
+              <span>neutral</span><span>expressive</span>
+            </div>
+          </div>
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">Steps (quality ↔ speed)</label>
+              <span id="steps-val" class="text-[11px] font-mono text-amber-400">6</span>
+            </div>
+            <input type="range" id="steps" min="3" max="15" step="1" value="6">
+            <div class="flex justify-between text-[10px] text-neutral-600 font-mono">
+              <span>fast</span><span>slow</span>
+            </div>
+          </div>
+        </div>
+        <label class="flex items-center gap-2 text-[12px] text-neutral-400 cursor-pointer select-none">
+          <input type="checkbox" id="skip-enhance" class="accent-amber-500 w-3.5 h-3.5" checked>
+          Skip noise cleanup (DeepFilterNet) — recommended for VoxCPM output
+        </label>
+        <p class="text-[11px] text-red-400 bg-red-500/5 border border-red-500/30 rounded-lg px-3 py-2">
+          ⚠ <b>Very slow on this CPU</b>: measured ~50× slower than realtime
+          (23 chars of Arabic → 3m 42s of compute). A 300-char paragraph ≈ <b>~1 hour</b>.
+          Only sensible for short samples — use <b>Piper</b> for chapters.
+          First run also downloads ~1 GB.
+        </p>
+      </div>
+
+      <!-- Text area -->
+      <textarea id="text-area" dir="auto" rows="12"
+                class="w-full bg-black/60 border border-neutral-800 rounded-xl p-4 text-[14px] leading-relaxed focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/10 transition scrollbar-thin resize-y"
+                placeholder="Cleaned text appears here — you can edit before synthesis."></textarea>
+
+      <div class="flex items-center justify-between gap-4 flex-wrap">
+        <div id="pipeline-hint" class="text-[11px] text-neutral-500 font-mono">
+          Piper → DeepFilterNet → ffmpeg
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="stop-btn"
+                  class="hidden bg-red-500/10 hover:bg-red-500/20 border border-red-500/40 text-red-400 hover:text-red-300 font-semibold px-4 py-2 rounded-lg text-[13px] transition active:scale-[.98]">
+            ■ Stop
+          </button>
+          <button id="synth-btn"
+                  class="bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 disabled:from-neutral-800 disabled:to-neutral-800 disabled:text-neutral-500 text-black font-semibold px-5 py-2 rounded-lg text-[13px] transition shadow-lg shadow-amber-500/15 disabled:shadow-none active:scale-[.98]">
+            Synthesize →
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Progress card -->
+    <section class="bg-neutral-950/60 border border-neutral-800/80 rounded-2xl p-5 sm:p-6 flex flex-col backdrop-blur-sm">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-[13px] font-semibold uppercase tracking-wider text-neutral-300 flex items-center gap-2">
+          <span id="status-dot" class="w-1.5 h-1.5 rounded-full bg-neutral-600 relative"></span>
+          <span id="status-text">Idle</span>
+        </h2>
+        <span id="elapsed" class="text-[11px] text-neutral-500 font-mono">—</span>
+      </div>
+
+      <div class="mb-4">
+        <div class="h-2 bg-black/60 rounded-full overflow-hidden border border-neutral-800">
+          <div id="progress-bar" class="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-[width] duration-500 ease-out" style="width:0%"></div>
+        </div>
+        <div class="flex justify-between text-[11px] text-neutral-500 mt-1.5 font-mono">
+          <span id="progress-pct">0%</span>
+          <span id="progress-stage">ready</span>
+        </div>
+      </div>
+
+      <!-- Error banner (shown on failure) -->
+      <div id="err-banner" class="hidden mb-3 border border-red-500/40 bg-red-500/10 rounded-lg p-3">
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <div class="text-[12px] font-semibold text-red-300 flex items-center gap-2">
+            <span>⚠</span><span id="err-title">Error</span>
+          </div>
+          <button id="err-close" class="text-red-300/60 hover:text-red-200 text-[14px] leading-none">✕</button>
+        </div>
+        <pre id="err-body" class="text-[11px] font-mono text-red-200/90 whitespace-pre-wrap break-all max-h-40 overflow-auto scrollbar-thin"></pre>
+      </div>
+
+      <!-- Disconnect banner -->
+      <div id="disc-banner" class="hidden mb-3 border border-amber-500/40 bg-amber-500/10 rounded-lg px-3 py-2 text-[11px] font-mono text-amber-300 flex items-center justify-between">
+        <span id="disc-text">Stream disconnected — retrying…</span>
+        <button id="disc-retry" class="underline hover:text-amber-200">retry now</button>
+      </div>
+
+      <div class="text-[12px] font-mono text-neutral-400 bg-black/70 border border-neutral-800 rounded-lg p-3 flex-1 min-h-[14rem] max-h-[28rem] overflow-auto scrollbar-thin">
+        <div id="log" class="space-y-1 leading-snug"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Library -->
+  <section id="library" class="bg-neutral-950/60 border border-neutral-800/80 rounded-2xl p-5 sm:p-6 backdrop-blur-sm scroll-mt-24">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-[13px] font-semibold uppercase tracking-wider text-neutral-300 flex items-center gap-2">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        Library
+        <span id="lib-count" class="text-[11px] text-neutral-500 font-mono font-normal normal-case tracking-normal">—</span>
+      </h2>
+      <button id="lib-refresh" class="text-[11px] text-neutral-400 hover:text-white font-mono transition">↻ refresh</button>
+    </div>
+    <div id="lib-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+    <p id="lib-empty" class="hidden text-[13px] text-neutral-500 text-center py-10">No audio files yet — synthesize one above.</p>
+  </section>
+
+</main>
+
+<footer class="max-w-7xl mx-auto px-6 pb-10 pt-4 text-[11px] text-neutral-600 font-mono text-center">
+  Piper · VoxCPM · DeepFilterNet · ffmpeg · all local
+</footer>
+
+<!-- Change credentials modal -->
+<div id="change-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 modal-backdrop">
+  <div class="bg-neutral-950 border border-neutral-800 rounded-2xl p-6 w-full max-w-sm space-y-4 shadow-2xl">
+    <div class="flex items-center justify-between">
+      <h3 class="text-[14px] font-semibold">Change credentials</h3>
+      <button id="change-close" class="text-neutral-500 hover:text-white">✕</button>
+    </div>
+    <form id="change-form" class="space-y-3">
+      <div class="space-y-1.5">
+        <label class="text-[10px] uppercase tracking-wider text-neutral-400">Current password</label>
+        <input type="password" name="current_password" required
+               class="w-full bg-black/60 border border-neutral-800 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-amber-500/60">
+      </div>
+      <div class="space-y-1.5">
+        <label class="text-[10px] uppercase tracking-wider text-neutral-400">New username (blank to keep)</label>
+        <input type="text" name="new_username"
+               class="w-full bg-black/60 border border-neutral-800 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-amber-500/60">
+      </div>
+      <div class="space-y-1.5">
+        <label class="text-[10px] uppercase tracking-wider text-neutral-400">New password (blank to keep)</label>
+        <input type="password" name="new_password"
+               class="w-full bg-black/60 border border-neutral-800 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-amber-500/60">
+      </div>
+      <p id="change-err" class="hidden text-[12px] text-red-400"></p>
+      <p id="change-ok"  class="hidden text-[12px] text-emerald-400"></p>
+      <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-black font-semibold px-4 py-2 rounded-lg text-[13px] transition active:scale-[.98]">Save</button>
+    </form>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmtBytes = (b) => b < 1024 ? b+' B' : b < 1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB';
+const fmtDur = (s) => { const m = Math.floor(s/60), sec = Math.floor(s%60); return `${m}:${String(sec).padStart(2,'0')}`; };
+const LEVEL_CLASS = {
+  error:   'text-red-400',
+  warn:    'text-amber-400',
+  subproc: 'text-neutral-500',
+};
+const logLine = (text, clsOrLevel='') => {
+  const d = document.createElement('div');
+  const cls = LEVEL_CLASS[clsOrLevel] || clsOrLevel || '';
+  if (cls) d.className = cls;
+  d.textContent = text;
+  const log = $('log');
+  log.appendChild(d);
+  // Trim to avoid unbounded DOM growth on long runs.
+  while (log.childElementCount > 800) log.removeChild(log.firstChild);
+  const box = log.parentElement;
+  box.scrollTop = box.scrollHeight;
+};
+const clearLog = () => { $('log').innerHTML = ''; };
+const showError = (title, body) => {
+  $('err-title').textContent = title || 'Error';
+  $('err-body').textContent = body || '';
+  $('err-banner').classList.remove('hidden');
+};
+const hideError = () => $('err-banner').classList.add('hidden');
+$('err-close') && ($('err-close').onclick = hideError);
+
+let ENGINES = [];
+let VOICES = [];
+
+async function loadWhoami() {
+  const r = await fetch('/api/whoami');
+  const {user} = await r.json();
+  if (!user) { location.href = '/login'; return; }
+  $('user-name').textContent = user;
+  $('user-avatar').textContent = user.slice(0,1).toUpperCase();
+}
+
+async function loadEngines() {
+  ENGINES = await fetch('/api/engines').then(r => r.json());
+  $('engine-select').innerHTML = ENGINES.map(e =>
+    `<option value="${e.id}">${e.display}</option>`).join('');
+}
+
+async function loadVoices() {
+  VOICES = await fetch('/api/voices').then(r => r.json());
+  refreshVoiceSelect();
+}
+
+function currentEngine() { return $('engine-select').value; }
+
+function refreshVoiceSelect() {
+  const eng = currentEngine();
+  const avail = VOICES.filter(v => v.engine === eng);
+  $('voice-select').innerHTML = avail.length
+    ? avail.map(v => `<option value="${v.id}" data-lang="${v.lang}">${v.display}</option>`).join('')
+    : '<option value="">— no voice options —</option>';
+
+  // Toggle per-engine settings
+  $('piper-settings').classList.toggle('hidden', eng !== 'piper');
+  $('voxcpm-settings').classList.toggle('hidden', eng !== 'voxcpm');
+
+  const names = {piper: 'Piper', voxcpm: 'VoxCPM'};
+  $('pipeline-hint').textContent = `${names[eng] || eng} → DeepFilterNet → ffmpeg`;
+}
+
+async function loadLibrary() {
+  const items = await fetch('/api/library').then(r => r.json());
+  const grid = $('lib-grid');
+  $('lib-count').textContent = `${items.length} file${items.length===1?'':'s'}`;
+  if (!items.length) {
+    grid.innerHTML = '';
+    $('lib-empty').classList.remove('hidden');
+    return;
+  }
+  $('lib-empty').classList.add('hidden');
+  grid.innerHTML = items.map(it => `
+    <div class="group bg-black/60 border border-neutral-800 rounded-xl p-3 hover:border-neutral-700 transition">
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <div class="min-w-0 flex-1">
+          <div class="text-[13px] font-medium truncate" dir="auto" title="${it.filename}">${it.filename.replace(/\.mp3$/,'')}</div>
+          <div class="text-[11px] text-neutral-500 font-mono mt-0.5">${fmtDur(it.duration)} · ${fmtBytes(it.size)}</div>
+        </div>
+        <div class="flex items-center gap-1">
+          <a href="/api/audio/${encodeURIComponent(it.filename)}" download
+             class="text-neutral-600 hover:text-amber-400 text-[14px] px-1 opacity-0 group-hover:opacity-100 transition"
+             title="Download">↓</a>
+          <button data-del="${it.filename}"
+             class="text-neutral-600 hover:text-red-400 text-[14px] px-1 opacity-0 group-hover:opacity-100 transition"
+             title="Delete">✕</button>
+        </div>
+      </div>
+      <audio controls preload="none" src="/api/audio/${encodeURIComponent(it.filename)}" class="w-full h-8"></audio>
+    </div>
+  `).join('');
+  grid.querySelectorAll('[data-del]').forEach(b => {
+    b.onclick = async () => {
+      if (!confirm(`Delete ${b.dataset.del}?`)) return;
+      await fetch(`/api/library/${encodeURIComponent(b.dataset.del)}`, {method:'DELETE'});
+      loadLibrary();
+    };
+  });
+}
+
+async function handleFile(file) {
+  $('drop-filename').textContent = `${file.name} · ${fmtBytes(file.size)}`;
+  logLine(`Uploading ${file.name}…`);
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const res = await fetch('/api/upload', {method:'POST', body:fd});
+    if (!res.ok) throw new Error(await res.text());
+    const {text, title, chars} = await res.json();
+    $('text-area').value = text;
+    $('title-input').value = title;
+    $('char-count').textContent = `${chars.toLocaleString()} chars`;
+    logLine(`Extracted ${chars.toLocaleString()} chars`, 'text-emerald-400');
+  } catch (e) {
+    logLine(`Upload failed: ${e.message}`, 'text-red-400');
+  }
+}
+
+function setupDropzone() {
+  const dz = $('dropzone'), fi = $('file-input');
+  dz.onclick = (e) => { if (e.target.tagName !== 'BUTTON') fi.click(); };
+  $('browse-btn').onclick = (e) => { e.stopPropagation(); fi.click(); };
+  fi.onchange = () => { if (fi.files[0]) handleFile(fi.files[0]); };
+  ['dragenter','dragover'].forEach(ev =>
+    dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(ev =>
+    dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
+  dz.addEventListener('drop', e => {
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+  });
+}
+
+// Slider live values
+$('speed').addEventListener('input',   (e) => $('speed-val').textContent   = `${Number(e.target.value).toFixed(2)}×`);
+$('silence').addEventListener('input', (e) => $('silence-val').textContent = `${Number(e.target.value).toFixed(2)}s`);
+$('cfg').addEventListener('input',     (e) => $('cfg-val').textContent     = `${Number(e.target.value).toFixed(1)}`);
+$('steps').addEventListener('input',   (e) => $('steps-val').textContent   = `${e.target.value}`);
+$('engine-select').addEventListener('change', refreshVoiceSelect);
+
+$('text-area').addEventListener('input', () => {
+  $('char-count').textContent = `${$('text-area').value.length.toLocaleString()} chars`;
+});
+
+let CURRENT_JOB = null;
+let CURRENT_ES  = null;
+let CURRENT_TIMER = null;
+let CURRENT_T0 = null;
+
+function finishSynthUI() {
+  $('synth-btn').disabled = false;
+  $('stop-btn').classList.add('hidden');
+  $('stop-btn').disabled = false;
+  $('stop-btn').textContent = '■ Stop';
+  $('disc-banner').classList.add('hidden');
+  if (CURRENT_ES) { try { CURRENT_ES.close(); } catch(_){} CURRENT_ES = null; }
+  if (CURRENT_TIMER) { clearInterval(CURRENT_TIMER); CURRENT_TIMER = null; }
+  CURRENT_JOB = null;
+  CURRENT_T0 = null;
+}
+
+function applyStatus(status, {error, filename, stage} = {}) {
+  if (status === 'done') {
+    $('status-dot').className = 'w-1.5 h-1.5 rounded-full bg-emerald-500';
+    $('status-text').textContent = 'Done';
+    $('progress-bar').style.width = '100%';
+    $('progress-pct').textContent = '100%';
+    $('progress-stage').textContent = stage || 'complete';
+  } else if (status === 'error') {
+    $('status-dot').className = 'w-1.5 h-1.5 rounded-full bg-red-500';
+    $('status-text').textContent = 'Error';
+    $('progress-stage').textContent = stage || 'failed';
+    if (error) showError('Synthesis failed', error);
+  } else if (status === 'cancelled') {
+    $('status-dot').className = 'w-1.5 h-1.5 rounded-full bg-neutral-500';
+    $('status-text').textContent = 'Cancelled';
+    $('progress-stage').textContent = stage || 'cancelled';
+  } else if (status === 'running') {
+    $('status-dot').className = 'w-1.5 h-1.5 rounded-full bg-amber-500 relative pulse';
+    $('status-text').textContent = 'Running';
+    if (stage) $('progress-stage').textContent = stage;
+  }
+}
+
+function handleEvent(ev, {replay=false} = {}) {
+  if (ev.type === 'snapshot') {
+    clearLog();
+    const j = ev.job || {};
+    if (typeof j.progress === 'number') {
+      const pct = Math.round(j.progress * 100);
+      $('progress-bar').style.width = pct + '%';
+      $('progress-pct').textContent = pct + '%';
+    }
+    if (j.stage) $('progress-stage').textContent = j.stage;
+    applyStatus(j.status, {error: j.error, stage: j.stage});
+    for (const h of ev.history || []) handleEvent(h, {replay: true});
+    return;
+  }
+  if (ev.type === 'log') {
+    logLine(ev.line, ev.level || '');
+    const m = ev.line.match(/^\[(\d+)\/(\d+)\]\s*(.*)/);
+    if (m) $('progress-stage').textContent = `${m[1]}/${m[2]} ${m[3].toLowerCase()}`;
+  } else if (ev.type === 'progress') {
+    const pct = Math.round(ev.progress * 100);
+    $('progress-bar').style.width = pct + '%';
+    $('progress-pct').textContent = pct + '%';
+    if (ev.stage) $('progress-stage').textContent = ev.stage;
+  } else if (ev.type === 'status') {
+    applyStatus(ev.status, {error: ev.error, filename: ev.filename, stage: ev.stage});
+    if (!replay && ev.status === 'done') { loadLibrary(); finishSynthUI(); }
+    if (!replay && (ev.status === 'error' || ev.status === 'cancelled')) finishSynthUI();
+  } else if (ev.type === 'end') {
+    // stream terminated cleanly
+    if (CURRENT_ES) { try { CURRENT_ES.close(); } catch(_){} CURRENT_ES = null; }
+  }
+}
+
+function attachStream(jobId) {
+  if (CURRENT_ES) { try { CURRENT_ES.close(); } catch(_){} }
+  const es = new EventSource(`/api/progress/${jobId}`);
+  CURRENT_ES = es;
+  es.onmessage = (e) => {
+    $('disc-banner').classList.add('hidden');
+    try { handleEvent(JSON.parse(e.data)); }
+    catch (err) { logLine('Bad event: ' + err.message, 'error'); }
+  };
+  es.onerror = () => {
+    // EventSource auto-reconnects, but show a hint so the user isn't confused.
+    if (CURRENT_JOB === jobId) {
+      $('disc-banner').classList.remove('hidden');
+      $('disc-text').textContent = 'Stream disconnected — retrying…';
+    }
+  };
+}
+
+$('disc-retry').onclick = () => {
+  if (CURRENT_JOB) attachStream(CURRENT_JOB);
+};
+
+function startElapsed() {
+  if (CURRENT_TIMER) clearInterval(CURRENT_TIMER);
+  CURRENT_T0 = Date.now();
+  CURRENT_TIMER = setInterval(() => {
+    if (!CURRENT_T0) return;
+    $('elapsed').textContent = `${((Date.now()-CURRENT_T0)/1000).toFixed(1)}s`;
+  }, 200);
+}
+
+$('synth-btn').onclick = async () => {
+  const text    = $('text-area').value.trim();
+  const engine  = currentEngine();
+  const voice   = $('voice-select').value;
+  const title   = $('title-input').value.trim() || 'Untitled';
+  const length_scale        = Number($('speed').value);
+  const sentence_silence    = Number($('silence').value);
+  const cfg_value           = Number($('cfg').value);
+  const inference_timesteps = Number($('steps').value);
+  // skip_enhance only makes sense for VoxCPM; piper output benefits from denoising.
+  const skip_enhance        = engine === 'voxcpm' && $('skip-enhance').checked;
+
+  if (!text) { logLine('Paste or upload some text first', 'warn'); return; }
+
+  hideError();
+  $('synth-btn').disabled = true;
+  $('stop-btn').classList.remove('hidden');
+  $('stop-btn').disabled = false;
+  $('stop-btn').textContent = '■ Stop';
+  $('status-text').textContent = 'Starting';
+  $('status-dot').className = 'w-1.5 h-1.5 rounded-full bg-amber-500 relative pulse';
+  $('progress-bar').style.width = '0%';
+  $('progress-pct').textContent = '0%';
+  $('progress-stage').textContent = 'init';
+  clearLog();
+  startElapsed();
+
+  try {
+    const r = await fetch('/api/synthesize', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text, engine, voice, title, length_scale, sentence_silence,
+                            cfg_value, inference_timesteps, skip_enhance}),
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const {job_id} = await r.json();
+    CURRENT_JOB = job_id;
+    localStorage.setItem('piper.currentJob', job_id);
+    attachStream(job_id);
+  } catch (e) {
+    applyStatus('error', {error: e.message});
+    logLine(e.message, 'error');
+    finishSynthUI();
+  }
+};
+
+$('stop-btn').onclick = async () => {
+  if (!CURRENT_JOB) return;
+  $('stop-btn').disabled = true;
+  $('stop-btn').textContent = 'Stopping…';
+  logLine('Stop requested…', 'warn');
+  try {
+    const r = await fetch(`/api/cancel/${CURRENT_JOB}`, {method:'POST'});
+    if (!r.ok) throw new Error(await r.text());
+  } catch (e) {
+    logLine(`Cancel failed: ${e.message}`, 'error');
+    $('stop-btn').disabled = false;
+    $('stop-btn').textContent = '■ Stop';
+  }
+};
+
+async function recoverRunningJob() {
+  // If the user refreshed during a run, reconnect to the last job if it's
+  // still active. This uses /api/jobs and picks up via the SSE snapshot.
+  const saved = localStorage.getItem('piper.currentJob');
+  if (!saved) return;
+  try {
+    const jobs = await fetch('/api/jobs').then(r => r.ok ? r.json() : []);
+    const j = jobs.find(x => x.id === saved);
+    if (!j) { localStorage.removeItem('piper.currentJob'); return; }
+    if (j.status !== 'running' && j.status !== 'queued') {
+      localStorage.removeItem('piper.currentJob');
+      return;
+    }
+    CURRENT_JOB = j.id;
+    $('synth-btn').disabled = true;
+    $('stop-btn').classList.remove('hidden');
+    $('stop-btn').disabled = false;
+    $('stop-btn').textContent = '■ Stop';
+    clearLog();
+    logLine(`Reattached to running job ${j.id.slice(0,8)} — ${j.title}`, 'warn');
+    startElapsed();
+    attachStream(j.id);
+  } catch (_) { /* silent */ }
+}
+
+$('lib-refresh').onclick = loadLibrary;
+
+// User menu
+$('user-btn').onclick = (e) => {
+  e.stopPropagation();
+  $('user-menu').classList.toggle('hidden');
+};
+document.addEventListener('click', () => $('user-menu').classList.add('hidden'));
+
+$('logout-btn').onclick = async () => {
+  await fetch('/api/logout', {method:'POST'});
+  location.href = '/login';
+};
+
+// Change credentials modal
+$('change-btn').onclick = () => {
+  $('change-modal').classList.remove('hidden');
+  $('change-err').classList.add('hidden');
+  $('change-ok').classList.add('hidden');
+  $('change-form').reset();
+};
+$('change-close').onclick = () => $('change-modal').classList.add('hidden');
+$('change-modal').addEventListener('click', (e) => {
+  if (e.target.id === 'change-modal') $('change-modal').classList.add('hidden');
+});
+$('change-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  $('change-err').classList.add('hidden');
+  $('change-ok').classList.add('hidden');
+  const res = await fetch('/api/change-credentials', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      current_password: fd.get('current_password'),
+      new_username: fd.get('new_username'),
+      new_password: fd.get('new_password'),
+    }),
+  });
+  if (!res.ok) {
+    $('change-err').textContent = res.status === 400 ? 'Current password is wrong' : (await res.text());
+    $('change-err').classList.remove('hidden');
+    return;
+  }
+  const {user} = await res.json();
+  if (user) {
+    $('user-name').textContent = user;
+    $('user-avatar').textContent = user.slice(0,1).toUpperCase();
+  }
+  $('change-ok').textContent = 'Updated';
+  $('change-ok').classList.remove('hidden');
+  setTimeout(() => $('change-modal').classList.add('hidden'), 1200);
+});
+
+async function boot() {
+  await loadWhoami();
+  await loadEngines();
+  await loadVoices();
+  setupDropzone();
+  loadLibrary();
+  recoverRunningJob();
+}
+boot();
+</script>
+</body>
+</html>

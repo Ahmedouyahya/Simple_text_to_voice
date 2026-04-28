@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in · Piper Novel Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  html, body { background:#0a0a0a; color:#e5e5e5; font-family: Inter, system-ui, sans-serif; }
+  body {
+    background-image:
+      radial-gradient(ellipse 60% 50% at 50% 0%, rgba(245,158,11,.09) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 50% 100%, rgba(124,58,237,.06) 0%, transparent 60%);
+    background-attachment: fixed;
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+</style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6">
+  <div class="w-full max-w-sm">
+    <div class="flex items-center gap-3 mb-8 justify-center">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/25">
+        <svg class="w-5 h-5 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/><path d="M8 22h8"/></svg>
+      </div>
+      <div>
+        <h1 class="text-[15px] font-semibold leading-none">Piper Novel Studio</h1>
+        <p class="text-[11px] text-neutral-500 mono mt-1">sign in to continue</p>
+      </div>
+    </div>
+
+    <form id="f" class="bg-neutral-950/60 border border-neutral-800/80 rounded-2xl p-6 space-y-4 backdrop-blur-sm">
+      <div class="space-y-1.5">
+        <label class="text-[11px] uppercase tracking-wider text-neutral-400">Username</label>
+        <input name="username" autocomplete="username" required autofocus
+               class="w-full bg-black/60 border border-neutral-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/10 transition">
+      </div>
+      <div class="space-y-1.5">
+        <label class="text-[11px] uppercase tracking-wider text-neutral-400">Password</label>
+        <input name="password" type="password" autocomplete="current-password" required
+               class="w-full bg-black/60 border border-neutral-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/10 transition">
+      </div>
+      <button type="submit"
+              class="w-full bg-gradient-to-b from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-semibold px-5 py-2.5 rounded-lg text-sm transition shadow-lg shadow-amber-500/15 active:scale-[.98]">
+        Sign in
+      </button>
+      <p id="err" class="text-[12px] text-red-400 text-center hidden"></p>
+    </form>
+
+    <p class="text-center text-[11px] text-neutral-600 mono mt-4">session remembered 30 days</p>
+  </div>
+
+<script>
+document.getElementById('f').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const err = document.getElementById('err');
+  err.classList.add('hidden');
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        username: fd.get('username'),
+        password: fd.get('password'),
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.text();
+      err.textContent = res.status === 401 ? 'Invalid credentials' : body;
+      err.classList.remove('hidden');
+      return;
+    }
+    location.href = '/';
+  } catch (x) {
+    err.textContent = x.message;
+    err.classList.remove('hidden');
+  }
+});
+</script>
+</body>
+</html>

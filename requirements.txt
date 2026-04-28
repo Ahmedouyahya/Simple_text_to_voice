@@ -1,0 +1,13 @@
+piper-tts>=1.4.2
+fastapi>=0.136.0
+uvicorn[standard]>=0.44.0
+sse-starlette>=3.3.4
+pydantic>=2.0.0
+python-multipart
+itsdangerous
+deepfilternet>=0.5.6
+
+# Optional: VoxCPM (high-quality but very slow on CPU, ~50× slower than realtime)
+# voxcpm>=2.0.2
+# soundfile
+# numpy
