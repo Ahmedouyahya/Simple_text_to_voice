@@ -394,30 +394,45 @@ async def _run_piper(job: Job, text: str, voice_id: str, raw: Path,
 
 
 async def _run_voxcpm(
-    job: Job, text: str, raw: Path, cfg_value: float,
-    inference_timesteps: int, phase_start: float, phase_end: float,
+    job: Job, text: str, raw: Path,
+    cfg_value: float, inference_timesteps: int,
+    phase_start: float, phase_end: float,
+    device: str = "auto",
+    model_id: str = "openbmb/VoxCPM-0.5B",
+    optimize: bool | None = None,
+    normalize: bool = False,
+    max_len: int = 4096,
 ) -> None:
     """Run VoxCPM synthesis in a subprocess so Stop actually kills it."""
     chunks = _chunk_for_voxcpm(text)
     if not chunks:
         raise RuntimeError("VoxCPM: empty text after chunking")
     n = len(chunks)
-    await _emit(job, type="log",
-                line=f"      loading VoxCPM (timesteps={inference_timesteps}, chunks={n})")
-
-    # Reality on a pure-CPU torch build: VoxCPM autoregressively decodes ~7
-    # audio frames per character for Arabic, ~2.8s per frame (a fixed cost
-    # dominated by the decoder pass, *not* by inference_timesteps). Plus
-    # ~60s model load. Observed on this machine: 23 chars took 3m42s.
     total_chars = sum(len(c) for c in chunks)
-    est = 60.0 + total_chars * 7.0 * 2.8
-    est = max(60.0, min(est, 14400.0))  # cap at 4h
+
+    # Time estimate depends heavily on device.
+    # CPU:  ~60s model load + ~7 audio frames/char × ~2.8s/frame (observed on this machine)
+    # CUDA: ~30s model load + much faster decode (rough: ~0.05s/char)
+    if device in ("cuda", "auto"):
+        est = 30.0 + total_chars * 0.05
+    else:
+        est = 60.0 + total_chars * 7.0 * 2.8
+    est = max(15.0, min(est, 14400.0))
+
+    await _emit(job, type="log",
+                line=f"      VoxCPM: model={model_id}, device={device}, "
+                     f"timesteps={inference_timesteps}, chunks={n}")
 
     payload = json.dumps({
         "chunks": chunks,
+        "out_wav": str(raw),
+        "model_id": model_id,
+        "device": device,
+        "optimize": optimize,
         "cfg_value": cfg_value,
         "inference_timesteps": inference_timesteps,
-        "out_wav": str(raw),
+        "normalize": normalize,
+        "max_len": max_len,
         "silence_seconds": 0.35,
     }).encode("utf-8")
 
@@ -428,7 +443,7 @@ async def _run_voxcpm(
         start_progress=phase_start,
         end_progress=phase_end,
         estimated_seconds=est,
-        label=f"voxcpm ({n} chunk{'s' if n > 1 else ''})",
+        label=f"voxcpm/{device} ({n} chunk{'s' if n > 1 else ''})",
         fail_prefix="VoxCPM",
     )
 
@@ -444,6 +459,11 @@ async def run_synth(
     cfg_value: float = 2.0,
     inference_timesteps: int = 6,
     skip_enhance: bool = False,
+    voxcpm_device: str = "auto",
+    voxcpm_model_id: str = "openbmb/VoxCPM-0.5B",
+    voxcpm_optimize: bool | None = None,
+    voxcpm_normalize: bool = False,
+    voxcpm_max_len: int = 4096,
 ):
     try:
         job.status = "running"
@@ -477,12 +497,19 @@ async def run_synth(
                 job.stage = "voxcpm synthesis"
                 await _emit(job, type="log",
                             line=f"[1/{total_steps}] VoxCPM synthesis "
-                                 f"(timesteps={inference_timesteps}, cfg={cfg_value})")
+                                 f"(model={voxcpm_model_id}, device={voxcpm_device}, "
+                                 f"timesteps={inference_timesteps}, cfg={cfg_value})")
                 await _emit(job, type="progress", progress=0.03, stage=job.stage)
                 await _run_voxcpm(
-                    job, text, raw, cfg_value,
+                    job, text, raw,
+                    cfg_value=cfg_value,
                     inference_timesteps=inference_timesteps,
                     phase_start=0.03, phase_end=synth_end,
+                    device=voxcpm_device,
+                    model_id=voxcpm_model_id,
+                    optimize=voxcpm_optimize,
+                    normalize=voxcpm_normalize,
+                    max_len=voxcpm_max_len,
                 )
             else:
                 job.stage = "piper synthesis"
@@ -701,12 +728,18 @@ class SynthIn(BaseModel):
     engine: str = "piper"
     voice: str = "ar_JO-kareem-medium"
     title: str = "Untitled"
+    # Piper settings
     length_scale: float = 1.0
     sentence_silence: float = 0.25
+    # VoxCPM settings
     cfg_value: float = 2.0
-    # VoxCPM quality/speed knob. Fewer = faster with small quality drop.
     inference_timesteps: int = 6
-    # Skip DeepFilterNet (VoxCPM output is usually clean already).
+    voxcpm_device: str = "auto"        # auto | cpu | cuda | mps
+    voxcpm_model_id: str = "openbmb/VoxCPM-0.5B"
+    voxcpm_optimize: bool | None = None  # None = auto (True on CUDA, False otherwise)
+    voxcpm_normalize: bool = False
+    voxcpm_max_len: int = 4096
+    # Pipeline
     skip_enhance: bool = False
 
 
@@ -730,8 +763,10 @@ async def api_synthesize(body: SynthIn, _: str = Depends(require_user)):
         voice=body.voice,
     )
     JOBS[job.id] = job
-    # Clamp timesteps: VoxCPM becomes unusable below 3, diminishing returns above ~15.
+    # Clamp timesteps: VoxCPM becomes unusable below 3, diminishing returns above ~20.
     timesteps = max(3, min(int(body.inference_timesteps), 20))
+    allowed_devices = {"auto", "cpu", "cuda", "mps"}
+    voxcpm_device = body.voxcpm_device if body.voxcpm_device in allowed_devices else "auto"
     job.task = asyncio.create_task(run_synth(
         job, text,
         engine=body.engine,
@@ -742,6 +777,11 @@ async def api_synthesize(body: SynthIn, _: str = Depends(require_user)):
         cfg_value=body.cfg_value,
         inference_timesteps=timesteps,
         skip_enhance=bool(body.skip_enhance),
+        voxcpm_device=voxcpm_device,
+        voxcpm_model_id=body.voxcpm_model_id,
+        voxcpm_optimize=body.voxcpm_optimize,
+        voxcpm_normalize=bool(body.voxcpm_normalize),
+        voxcpm_max_len=max(512, min(int(body.voxcpm_max_len), 8192)),
     ))
     # Keep the job dict from growing without bound: trim oldest terminated jobs.
     terminated = [

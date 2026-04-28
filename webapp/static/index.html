@@ -171,8 +171,32 @@
         </div>
       </div>
 
-      <!-- VoxCPM-only sliders -->
+      <!-- VoxCPM-only settings -->
       <div id="voxcpm-settings" class="hidden space-y-3">
+
+        <!-- Row 1: model + device -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="space-y-1.5">
+            <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">Model</label>
+            <select id="voxcpm-model"
+                    class="w-full bg-black/60 border border-neutral-800 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-amber-500/60 transition">
+              <option value="openbmb/VoxCPM-0.5B">VoxCPM-0.5B (lightweight)</option>
+              <option value="openbmb/VoxCPM2">VoxCPM2 (latest, larger)</option>
+            </select>
+          </div>
+          <div class="space-y-1.5">
+            <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">Device</label>
+            <select id="voxcpm-device"
+                    class="w-full bg-black/60 border border-neutral-800 rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-amber-500/60 transition">
+              <option value="auto">Auto (detect best)</option>
+              <option value="cuda">CUDA (NVIDIA GPU)</option>
+              <option value="mps">MPS (Apple Silicon)</option>
+              <option value="cpu">CPU (slow)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2: CFG + Steps -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="space-y-1.5">
             <div class="flex items-center justify-between">
@@ -189,21 +213,45 @@
               <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">Steps (quality ↔ speed)</label>
               <span id="steps-val" class="text-[11px] font-mono text-amber-400">6</span>
             </div>
-            <input type="range" id="steps" min="3" max="15" step="1" value="6">
+            <input type="range" id="steps" min="3" max="20" step="1" value="6">
             <div class="flex justify-between text-[10px] text-neutral-600 font-mono">
-              <span>fast</span><span>slow</span>
+              <span>fast</span><span>quality</span>
             </div>
           </div>
         </div>
-        <label class="flex items-center gap-2 text-[12px] text-neutral-400 cursor-pointer select-none">
-          <input type="checkbox" id="skip-enhance" class="accent-amber-500 w-3.5 h-3.5" checked>
-          Skip noise cleanup (DeepFilterNet) — recommended for VoxCPM output
-        </label>
-        <p class="text-[11px] text-red-400 bg-red-500/5 border border-red-500/30 rounded-lg px-3 py-2">
-          ⚠ <b>Very slow on this CPU</b>: measured ~50× slower than realtime
-          (23 chars of Arabic → 3m 42s of compute). A 300-char paragraph ≈ <b>~1 hour</b>.
-          Only sensible for short samples — use <b>Piper</b> for chapters.
-          First run also downloads ~1 GB.
+
+        <!-- Row 3: max length -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">Max output length (tokens)</label>
+            <span id="maxlen-val" class="text-[11px] font-mono text-amber-400">4096</span>
+          </div>
+          <input type="range" id="maxlen" min="512" max="8192" step="256" value="4096">
+          <div class="flex justify-between text-[10px] text-neutral-600 font-mono">
+            <span>short</span><span>long</span>
+          </div>
+        </div>
+
+        <!-- Row 4: checkboxes -->
+        <div class="flex flex-wrap gap-4">
+          <label class="flex items-center gap-2 text-[12px] text-neutral-400 cursor-pointer select-none">
+            <input type="checkbox" id="skip-enhance" class="accent-amber-500 w-3.5 h-3.5" checked>
+            Skip DeepFilterNet (recommended for VoxCPM)
+          </label>
+          <label class="flex items-center gap-2 text-[12px] text-neutral-400 cursor-pointer select-none">
+            <input type="checkbox" id="voxcpm-normalize" class="accent-amber-500 w-3.5 h-3.5">
+            Normalize text before synthesis
+          </label>
+        </div>
+
+        <!-- CPU speed warning — shown only when CPU is selected -->
+        <p id="voxcpm-cpu-warn" class="hidden text-[11px] text-amber-400 bg-amber-500/5 border border-amber-500/30 rounded-lg px-3 py-2">
+          CPU mode is ~50× slower than realtime. For longer texts use a GPU or switch to Piper.
+          First run also downloads the model weights (~1 GB).
+        </p>
+        <!-- Generic first-run note -->
+        <p class="text-[11px] text-neutral-500 bg-neutral-900/40 border border-neutral-800 rounded-lg px-3 py-2">
+          First run downloads model weights from Hugging Face (~1 GB for VoxCPM-0.5B, more for VoxCPM2).
         </p>
       </div>
 
@@ -467,6 +515,13 @@ $('speed').addEventListener('input',   (e) => $('speed-val').textContent   = `${
 $('silence').addEventListener('input', (e) => $('silence-val').textContent = `${Number(e.target.value).toFixed(2)}s`);
 $('cfg').addEventListener('input',     (e) => $('cfg-val').textContent     = `${Number(e.target.value).toFixed(1)}`);
 $('steps').addEventListener('input',   (e) => $('steps-val').textContent   = `${e.target.value}`);
+$('maxlen').addEventListener('input',  (e) => $('maxlen-val').textContent  = `${e.target.value}`);
+
+// Show/hide CPU speed warning based on device selection
+$('voxcpm-device').addEventListener('change', (e) => {
+  $('voxcpm-cpu-warn').classList.toggle('hidden', e.target.value !== 'cpu');
+});
+
 $('engine-select').addEventListener('change', refreshVoiceSelect);
 
 $('text-area').addEventListener('input', () => {
@@ -586,8 +641,11 @@ $('synth-btn').onclick = async () => {
   const sentence_silence    = Number($('silence').value);
   const cfg_value           = Number($('cfg').value);
   const inference_timesteps = Number($('steps').value);
-  // skip_enhance only makes sense for VoxCPM; piper output benefits from denoising.
   const skip_enhance        = engine === 'voxcpm' && $('skip-enhance').checked;
+  const voxcpm_device       = $('voxcpm-device').value;
+  const voxcpm_model_id     = $('voxcpm-model').value;
+  const voxcpm_normalize    = $('voxcpm-normalize').checked;
+  const voxcpm_max_len      = Number($('maxlen').value);
 
   if (!text) { logLine('Paste or upload some text first', 'warn'); return; }
 
@@ -608,7 +666,8 @@ $('synth-btn').onclick = async () => {
     const r = await fetch('/api/synthesize', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({text, engine, voice, title, length_scale, sentence_silence,
-                            cfg_value, inference_timesteps, skip_enhance}),
+                            cfg_value, inference_timesteps, skip_enhance,
+                            voxcpm_device, voxcpm_model_id, voxcpm_normalize, voxcpm_max_len}),
     });
     if (!r.ok) throw new Error(await r.text());
     const {job_id} = await r.json();

@@ -121,9 +121,41 @@ Output files: `*_raw.wav`, `*_ff.wav` (ffmpeg chain), `*_dfn.wav` (DeepFilterNet
 
 ---
 
-## VoxCPM note
+## VoxCPM
 
-VoxCPM produces higher-quality output but is **~50× slower than realtime** on a CPU-only machine. Use Piper for anything beyond a short test sample.
+VoxCPM is a high-quality neural TTS engine from [OpenBMB](https://huggingface.co/openbmb). It produces more natural-sounding output than Piper but is significantly heavier.
+
+### Models
+
+| Model ID | Size | Notes |
+|---|---|---|
+| `openbmb/VoxCPM-0.5B` | ~1 GB | Lightweight, good quality |
+| `openbmb/VoxCPM2` | ~2 GB | Latest generation, higher quality |
+
+Models are downloaded automatically from Hugging Face on first use. No manual setup needed.
+
+### Device options
+
+Select the device in the UI (or the `voxcpm_device` API field):
+
+| Value | Description |
+|---|---|
+| `auto` | Uses CUDA if available, then MPS, then CPU |
+| `cuda` | NVIDIA GPU — fast (~realtime or better) |
+| `mps` | Apple Silicon GPU — faster than CPU |
+| `cpu` | CPU-only — **~50× slower than realtime** for Arabic |
+
+`torch.compile` optimization is enabled automatically when CUDA is available and disabled otherwise.
+
+### Other controls
+
+| Setting | Description |
+|---|---|
+| Steps | Inference timesteps — more = higher quality, slower |
+| CFG | Expressiveness / guidance scale (1.0–3.5) |
+| Max length | Maximum token length for the output (cap long texts) |
+| Normalize text | Run text normalization before synthesis |
+| Skip DeepFilterNet | Recommended — VoxCPM output is already clean |
 
 ---
 
